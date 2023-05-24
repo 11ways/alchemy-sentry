@@ -13,8 +13,20 @@ let options = {
 	// Do you want to use the Sentry tracing?
 	enable_performance_tracing : false,
 
+	// What should we say is the release version?
+	release : alchemy.package?.version || null,
+
 	// To set a uniform sample rate
 	traces_sample_rate: 0.3,
+
+	// Before sending the event to Sentry, this function will be called
+	server_before_send : null,
+
+	// Before sending a transaction to Sentry, this function will be called
+	server_before_send_transaction : null,
+
+	// Before a breadcrumb is added, this function will be called
+	server_before_add_breadcrumb : null,
 };
 
 // Inject the user-overridden options
@@ -29,11 +41,33 @@ const Sentry = alchemy.use('@sentry/node');
 
 alchemy.plugins.sentry.Sentry = Sentry;
 
-Sentry.init({
+let environment = alchemy.environment;
+
+if (environment == 'dev') {
+	environment = 'development';
+}
+
+let init_options = {
 	dsn              : options.endpoint,
 	tracesSampleRate : options.traces_sample_rate,
 	integrations     : [],
-});
+	release          : options.release,
+	environment      : environment,
+};
+
+if (options.server_before_send) {
+	init_options.beforeSend = options.server_before_send;
+}
+
+if (options.server_before_send_transaction) {
+	init_options.beforeSendTransaction = options.server_before_send_transaction;
+}
+
+if (options.server_before_add_breadcrumb) {
+	init_options.beforeBreadcrumb = options.server_before_add_breadcrumb;
+}
+
+Sentry.init(init_options);
 
 alchemy.registerErrorHandler((error, info) =>  {
 	Sentry.captureException(error);
@@ -69,7 +103,26 @@ if (options.serve_browser_script_locally && options.browser_script) {
 	downloadAndCacheBrowserScript();
 }
 
-const BROWSER_INIT_SCRIPT = `Sentry.init({dsn: ${ JSON.stringify(options.endpoint) }});`;
+let release_version = options.release;
+
+if (release_version) {
+	release_version = JSON.stringify(release_version);
+} else {
+	release_version = 'null';
+}
+
+const BROWSER_INIT_SCRIPT = `Sentry.init({
+	dsn         : ${ JSON.stringify(options.endpoint) },
+	release     : ${ release_version },
+	environment : ${ JSON.stringify(environment) },
+	beforeSend  : (event, hint) => {
+		if (typeof beforeSendToSentry == 'function') {
+			event = beforeSendToSentry(event, hint);
+		}
+
+		return event;
+	},
+});`;
 
 /**
  * Download the browser script and cache it

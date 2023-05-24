@@ -2,7 +2,7 @@
 	"name": "alchemy-sentry",
 	"description": "The Sentry plugin for Alchemy",
 	"author": "Jelle De Loecker <jelle@elevenways.be>",
-	"version": "0.1.1-alpha",
+	"version": "0.1.1",
 	"repository": "11ways/alchemy-sentry",
 	"license": "MIT",
 	"keywords": [

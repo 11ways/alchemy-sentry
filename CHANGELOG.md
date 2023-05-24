@@ -1,4 +1,4 @@
-## 0.1.1 (WIP)
+## 0.1.1 (2023-05-24)
 
 * Send release version info
 * Set the correct environment
